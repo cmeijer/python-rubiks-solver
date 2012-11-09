@@ -1,0 +1,12 @@
+setting     difficulty1     difficulty2     hiddenNodes = 10    maxDataSize = 1
+            tries   time    tries   time    cum
+100         45      16      140     82      98
+30          283     42      82      24      66
+25          236     32      231     54      86
+20          268     34      213     47      81
+15          486     54      103     22      76
+12          188     20      253     47      67
+10          199     20      322     53      73
+8           286     27      337     54      81
+5           447     39      550     85      124
+
