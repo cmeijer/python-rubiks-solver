@@ -1,0 +1,10 @@
+setting     difficulty1     difficulty2     maxDataSize = 4    nn train iterations = 3
+            tries   time    tries   time    cum
+4           303     34      230     31      65
+5           49      4       228     32      36
+6           60      6       174     27      33  <--
+7           >1000   >120
+8           48      4       268     47      51
+9           241     30      345     68      98
+10          123     13      288     52      67
+

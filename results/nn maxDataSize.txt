@@ -1,0 +1,20 @@
+setting     difficulty1     difficulty2     hiddenNodes = 10    nn train iterations = 10
+            tries   time    tries   time    cum
+1           199     20      322     53      73
+2           188     24      198     43      67
+3           70      11      186     50      61  <--
+4           72      14      162     51      65
+5           66      14      192     68      82
+10          47      18      107     61      79
+15          53      29              >120
+
+setting     difficulty1     difficulty2     hiddenNodes = 10    nn train iterations = 3
+            tries   time    tries   time    cum
+3           223     22      275     48      70
+4           123     13      288     52      67  <--
+5           125     14      308     61      75
+
+setting     difficulty1     difficulty2     hiddenNodes = 10    nn train iterations = 1
+            tries   time    tries   time    cum
+5           419     36      415     68      104
+10          247     25      357     65      90  <--
