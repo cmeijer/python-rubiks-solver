@@ -54,7 +54,7 @@ class Validator(object):
 
     def getValidationSet(self):
         try:        
-            validationSet = self.loadValidationSet()
+            validationSet = self.loadValidationSet()[0:self.validationSetSize]
         except:
             print 'Failed to load validation set.'
             validationSet = self.generateValidationSet()

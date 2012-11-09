@@ -174,7 +174,8 @@ class Cube(object):
 
     def getBinaryState(self):
         featureVector = []
-        for color in range(0,6):
+        for i in range(0,6):
+            color = self.state[i][1][1] # The color of the middle face of the ith side.
             for side in range(0,6):
                 sideList = [item for sublist in self.state[side] for item in sublist]
                 featureVector.extend(map(lambda x : x == color and 1.0 or 0.0, sideList))
@@ -185,9 +186,11 @@ class Cube(object):
         s = self.state
         return flatten([flatten([map(lambda x:x==c and 1.0 or 0.0, flatten(s[j])) for j in range(0,6)]) for c in range(0,6)])
 
+    # A failed attempt to speed up the calculation of the binary state.
     def getBinaryState3(self):
         featureVector = []
-        for color in range(0,6):
+        for i in range(0,6):
+            color = self.state[i][1][1] # The color of the middle face of the ith side.
             for side in range(0,6):
                 for row in range(0,3):
                     for cell in range(0,3):
