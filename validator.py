@@ -10,18 +10,10 @@ random.seed(0)
 
 class Validator(object):
     def __init__(self):
-        self.validationSetSize = 5000
+        self.validationSetSize = 100
         self.maxActionsPerTrial = 100
-        self.validationSetPath = 'validationSet.pck'
-
-    def generateRandomWorld(self):
-        world = CubeWorld()
-        for i in range(0, 100):
-            possibleActions = world.getPossibleActions()
-            random.shuffle(possibleActions)
-            world.performActionAndReceiveReward(possibleActions[0])
-        return world
-
+        self.validationSetPath = 'data/validationSet.pck'
+    
     def getSuccessRate(self, results):
         if len(results) == 0:
             return 0.0
@@ -70,17 +62,21 @@ class Validator(object):
         self.saveValidationSet(validationSet)        
         return validationSet
 
+    def generateRandomWorld(self):
+        world = CubeWorld(random = True)        
+        return world
+
+    def saveValidationSet(self, validationSet):
+        print 'Saving validation set.'
+        f = open(self.validationSetPath, 'w')
+        cPickle.dump(validationSet, f)
+
     def loadValidationSet(self):
         print 'Loading validation set.'
         f = open(self.validationSetPath, 'r')            
         validationSet = cPickle.load(f)
         f.close()
         return validationSet
-
-    def saveValidationSet(self, validationSet):
-        print 'Saving validation set.'
-        f = open(self.validationSetPath, 'w')
-        cPickle.dump(validationSet, f)
 #*******************************************************************************
 
 class Test(unittest.TestCase):
