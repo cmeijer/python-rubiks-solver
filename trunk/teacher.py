@@ -44,12 +44,7 @@ class Teacher(object):
                         difficulty -= 1              
 
     def getWorld(self, difficulty):
-        world = CubeWorld()
-        for i in range(0, difficulty):
-            possibleActions = world.getPossibleActions()
-            random.shuffle(possibleActions)
-            world.performActionAndReceiveReward(possibleActions[0])
-        return world
+        return CubeWorld(difficulty = difficulty)
 
     def getSuccessRate(self, results):
         if len(results) == 0:

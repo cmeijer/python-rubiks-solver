@@ -36,10 +36,8 @@ class Learner(object):
             value = reward + self.gamma * nextValue
             if value > 1.0:
                 print 'Value = {0} = {1} + {2} * {3}'.format(value, reward, self.gamma, nextValue)
-                print self.world.hasEnded()
-                print self.world.cube.isSolved()
-                print self.world.cube
-                raise Exception('Value exceeded expected maximum.')
+                if value > 2.0:
+                    raise Exception('Value exceeded expected maximum.')
             
             self.setValue(self.world.getState(), value)
 
@@ -107,7 +105,7 @@ class Learner(object):
     def loadTrainConfiguration(self):
         self.explorationMethod = 'epsilonGreedy'
         self.epsilon = 0.2
-        self.gamma = 0.9
+        self.gamma = 0.90
         self.learn = True
 
 if __name__ == '__main__':

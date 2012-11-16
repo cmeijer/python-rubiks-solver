@@ -19,10 +19,10 @@ class ValueFunction(object):
 class NNValueFunction(object):
     def __init__(self, inputNodes, path = None):
         self.inputNodes = inputNodes
-        self.hiddenNodes = 100
+        self.hiddenNodes = 20
         self.outputNodes = 1
         if path == None:
-            self.path = '/data/valueFunction_{}i{}h{}o.pck'.format(self.inputNodes, self.hiddenNodes, self.outputNodes)
+            self.path = 'data/valueFunction_{}i{}h{}o.pck'.format(self.inputNodes, self.hiddenNodes, self.outputNodes)
         else:
             self.path = path
         try:

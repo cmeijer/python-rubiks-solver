@@ -11,6 +11,31 @@ class Cube(object):
         self.actions = ['+top', '-top', '+front', '-front', '+right', '-right', '+back', '-back', '+left', '-left', '+bottom', '-bottom']
         self.colorTranslations = ['r', 'b', 'w', 'g', 'y', 'o']
         self.directions = ['forward', 'backward', 'left', 'right', 'rollleft', 'rollright']
+        self.edges =    [
+                            [[0,1,0],[1,0,1]], 
+                            [[0,2,1],[2,0,1]],
+                            [[0,1,2],[3,0,1]], 
+                            [[0,0,1],[4,0,1]], 
+                            [[5,1,0],[1,2,1]], 
+                            [[5,2,1],[4,2,1]],
+                            [[5,1,2],[3,2,1]], 
+                            [[5,0,1],[2,2,1]],
+                            [[1,1,2],[2,1,0]], 
+                            [[2,1,2],[3,1,0]], 
+                            [[3,1,2],[4,1,0]], 
+                            [[4,1,2],[1,1,0]]
+                        ]
+
+        self.corners =  [
+                            [[0,0,0],[4,0,2],[1,0,0]],
+                            [[0,2,0],[1,0,2],[2,0,0]],
+                            [[0,2,2],[2,0,2],[3,0,0]],
+                            [[0,0,2],[3,0,2],[4,0,0]],
+                            [[5,2,0],[4,2,2],[1,2,0]],
+                            [[5,0,0],[1,2,2],[2,2,0]],
+                            [[5,0,2],[2,2,2],[3,2,0]],
+                            [[5,2,2],[3,2,2],[4,2,0]],
+                        ]
 
     def getActions(self):
         return list(self.actions)
@@ -116,6 +141,32 @@ class Cube(object):
             else:
                 s += self.colorTranslations[stateRow[i]] + ' '
         return s
+
+    def getCorrectEdges(self):
+        correctEdges = 0
+        for edge in self.edges:
+            if self.areFacesCorrect(edge):
+                correctEdges += 1
+        return correctEdges
+
+    def getCorrectCorners(self):
+        correctCorners = 0
+        for corner in self.corners:
+            if self.areFacesCorrect(corner):
+                correctCorners += 1
+        return correctCorners
+
+    def areFacesCorrect(self, faces):
+        for face in faces:
+            side = face[0]
+            row = face[1]
+            cell = face[2]
+
+            correct = self.state[side][1][1]
+            real = self.state[side][row][cell]
+            if real != correct:
+                return False
+        return True
 
     def rotateState(self, direction):
         if direction == 'forward':      # over the left-right axis
@@ -348,6 +399,50 @@ class CubeSanityTest(unittest.TestCase):
 
         # Assert
         self.assertTrue(newCube.isSolved())
+
+    def test_newCube_getCorrectEdges_12(self):
+        # Arrange
+        newCube = Cube()
+
+        # Act
+        correctEdges = newCube.getCorrectEdges()
+
+        # Assert
+        self.assertEqual(correctEdges, 12)
+
+    def test_newCube_getCorrectCorners_8(self):
+        # Arrange
+        newCube = Cube()
+
+        # Act
+        correctCorners = newCube.getCorrectCorners()
+
+        # Assert
+        self.assertEqual(correctCorners, 8)
+
+    def test_newCubeAfterOneMove_getCorrectEdges_8(self):
+        # Arrange
+        newCube = Cube()
+        action = newCube.getActions()[1]
+        newCube.performAction(action)
+
+        # Act
+        correctEdges = newCube.getCorrectEdges()
+
+        # Assert
+        self.assertEqual(correctEdges, 8)
+
+    def test_newCube_newCubeAfterOneMove_getCorrectCorners_4(self):
+        # Arrange
+        newCube = Cube()
+        action = newCube.getActions()[1]
+        newCube.performAction(action)
+
+        # Act
+        correctCorners = newCube.getCorrectCorners()
+
+        # Assert
+        self.assertEqual(correctCorners, 4)
 
 class BinaryStateTester(unittest.TestCase):
     def test_getBinaryState_solvedCube_correctState(self):
