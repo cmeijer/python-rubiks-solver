@@ -152,7 +152,7 @@ def test_Generator(h, value_a, value_b, value_c):
                     abs(self.nnvf.get(self.getState_b()) - value_b),
                     abs(self.nnvf.get(self.getState_c()) - value_c)]
             meanError = sum(errors) / len(errors)
-	    print ('{:>3} {:5.5f}').format(i, meanError)
+            #print ('{:>3} {:5.5f}').format(i, meanError)
             # Early escape to save time
             if meanError < maxAllowedMeanError:
                 break
