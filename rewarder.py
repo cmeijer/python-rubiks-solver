@@ -40,22 +40,16 @@ class ValueDifferentialRewarder(Rewarder):
 
 class AllOrNothingRewarder(Rewarder):
     def __init__(self):
-        self.isSolved = None
+        pass
 
     def reset(self, cube):
-        self.isSolved = False
+        pass
 
     def peekReward(self, cube):
         return self.getValue(cube)
 
     def getReward(self, cube):
-        value = self.getValue(cube)
-        if self.isSolved:
-            return 0.0
-        else:
-            return value
-        if self.cube.isSolved():
-            self.isSolved = True
+        return self.getValue(cube)
 
     def getValue(self, cube):
         if cube.isSolved():
