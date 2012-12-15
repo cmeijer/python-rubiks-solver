@@ -17,15 +17,25 @@ class ValueFunction(object):
         raise Exception('Not implemented')
 
 class NNValueFunction(object):
-    def __init__(self, inputNodes, path = None):
+    def __init__(self, inputNodes, path = None, nnRandomSeed = None):
         self.inputNodes = inputNodes
-        self.hiddenNodes = 20
+        self.hiddenNodes = 8
         self.outputNodes = 1
+
+        self.defaultPath = 'data/valueFunctionEmergencyDump.pck'
         if path == None:
             self.path = 'data/valueFunction_{}i{}h{}o.pck'.format(self.inputNodes, self.hiddenNodes, self.outputNodes)
         else:
             self.path = path
+        self.nnRandomSeed = nnRandomSeed
 
+        self.loadNN()
+        self.N = 0.001  # Smaller means faster somehow
+        self.M = 0.0   # Inertia
+        self.data = []
+        self.maxDataSize = 4 # Number of set() instances that are remembered and trained on.
+
+    def loadNN(self):
         try:
             f = open(self.path, 'r')            
             self.nn = cPickle.load(f)
@@ -33,10 +43,6 @@ class NNValueFunction(object):
         except:
             self.reset()
         self.nn.verbose = True
-        self.N = 0.01
-        self.M = 0.01
-        self.data = []
-        self.maxDataSize = 4 # Number of set() instances that are remembered and trained on.
 
     def get(self, inputs):
         return self.nn.runNN(inputs)[0]
@@ -48,13 +54,25 @@ class NNValueFunction(object):
         self.nn.train(self.data, max_iterations = 4, N=self.N, M=self.M)
 
     def __del__(self):
-        print 'Writing neural net to {}.'.format(self.path)
-        f = open(self.path, 'w')
+        self.saveNN()
+
+    def saveNN(self):
+        if self.path == None:
+            print 'Warning: No path entered. Using default path to write NN to.'
+            path = self.defaultPath
+        else:
+            path = self.path
+
+        print 'Writing neural net to {}.'.format(path)
+        f = open(path, 'w')
         cPickle.dump(self.nn, f)
+        f.close()        
         print 'Neural net written.'
+        self.nn = None
 
     def reset(self):
-        self.nn = NN(self.inputNodes, self.hiddenNodes, self.outputNodes)
+        self.nn = NN(self.inputNodes, self.hiddenNodes, self.outputNodes, 
+                     randomSeed = self.nnRandomSeed)
 
 class HashTableValueFunction(object):
     def __init__(self, inputNodes, path = 'valueFunction.pck'):
@@ -74,36 +92,16 @@ class HashTableValueFunction(object):
         self.table = {}
 
 #*************************************************************************
-class VFTest(unittest.TestCase):
+class ValueFunctionConvergenceTests(unittest.TestCase):
     def setUp(self):
+        self.testFilePath = 'data/test_ValueFunction.pck'
         self.nnvf = NNValueFunction(len(self.getState_a()))
-        self.nnvf.path == None
+        self.nnvf.path = self.testFilePath
+        self.nnvf.nnRandomSeed = 0
         self.nnvf.reset()
 
-    def test_LearnSmallValues(self):
-        value_a = 0.7
-        value_b = 0.9
-        value_c = 0.2
-
-        state_a = self.getState_a()
-        state_b = self.getState_b()
-        state_c = self.getState_c()
-
-        error = 0.0
-        for i in range(0,100):
-            self.nnvf.set(state_a, value_a)
-            self.nnvf.set(state_b, value_b)
-            self.nnvf.set(state_c, value_c)
-
-            error = sum([abs(self.nnvf.get(self.getState_a()) - value_a), 
-                    abs(self.nnvf.get(self.getState_b()) - value_b),
-                    abs(self.nnvf.get(self.getState_c()) - value_c)])
-
-            print error
-
-        target = 0.1
-        self.assertTrue(error < target)
-
+    def tearDown(self):
+        pass
 
     def getState_a(self):
         return [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
@@ -114,5 +112,56 @@ class VFTest(unittest.TestCase):
     def getState_c(self):
         return [0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
 
+def generateTests():
+    hiddenNodeCountList = [4, 6, 8, 10, 15]
+    small_a = 0.7
+    small_b = 0.9
+    small_c = 0.2
+    for h in hiddenNodeCountList:
+        testName = 'test_LearnSmallValues_{}_HiddenNodes_Converges'.format(h)
+        test = test_Generator(h, small_a, small_b, small_c)
+        setattr(ValueFunctionConvergenceTests, testName, test)
+
+    large_a = 1.7
+    large_b = 4.9
+    negative_c = -2.2
+
+    h = 12
+    testName = 'test_LearnLargeValues_{}_HiddenNodes_Converges'.format(h)
+    test = test_Generator(12, large_a, large_b, negative_c)
+    setattr(ValueFunctionConvergenceTests, testName, test)
+
+def test_Generator(h, value_a, value_b, value_c):
+    def test_LearnValues(self):
+        # Arrange
+        state_a = self.getState_a()
+        state_b = self.getState_b()
+        state_c = self.getState_c()
+        self.nnvf.hiddenNodes = h
+        self.nnvf.reset()
+
+        maxAllowedMeanError = 0.01
+
+        # Act
+        for i in range(0, 300):
+            self.nnvf.set(state_a, value_a)
+            self.nnvf.set(state_b, value_b)
+            self.nnvf.set(state_c, value_c)
+
+            errors = [abs(self.nnvf.get(self.getState_a()) - value_a), 
+                    abs(self.nnvf.get(self.getState_b()) - value_b),
+                    abs(self.nnvf.get(self.getState_c()) - value_c)]
+            meanError = sum(errors) / len(errors)
+	    print ('{:>3} {:5.5f}').format(i, meanError)
+            # Early escape to save time
+            if meanError < maxAllowedMeanError:
+                break
+
+        # Assert
+        self.assertLessEqual(meanError, maxAllowedMeanError)
+    return test_LearnValues
+
 if __name__ == '__main__':
+    generateTests()
+    del NNValueFunction.__del__ # So no nets are being written
     unittest.main()

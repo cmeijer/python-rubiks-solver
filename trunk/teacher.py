@@ -10,8 +10,8 @@ random.seed(0)
 class Teacher(object):
     def __init__(self):
         self.sampleSize = 100
-        self.minimumSuccessRate = 0.60
-        self.maximumSuccessRate = 0.85
+        self.minimumSuccessRate = 0.85
+        self.maximumSuccessRate = 0.95
         self.reportRateEveryTries = 250
 
     def teach(self, learner):
