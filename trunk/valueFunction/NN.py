@@ -25,8 +25,8 @@ class NN:
     self.ao = [1.0]*self.no
 
     # create node weight matrices
-    self.wi = makeMatrix (self.ni, self.nh)
-    self.wo = makeMatrix (self.nh, self.no)
+    self.wi = makeMatrix (self.ni, self.nh) # weights from input to hidden
+    self.wo = makeMatrix (self.nh, self.no) # weights from hidden to output
     # initialize node weights to random vals
     randomizeMatrix ( self.wi, -0.2, 0.2 )
     randomizeMatrix ( self.wo, -2.0, 2.0 )
@@ -51,7 +51,7 @@ class NN:
       sum = 0.0
       for j in range(self.nh):        
         sum +=( self.ah[j] * self.wo[j][k] )
-      self.ao[k] = sigmoid (sum) # This sigmoid has to go.
+      self.ao[k] = sigmoid(sum) # This sigmoid has to go.
       
     return self.ao
   
@@ -72,7 +72,7 @@ class NN:
     # dE/dw[j][k] = (t[k] - ao[k]) * s'( SUM( w[j][k]*ah[j] ) ) * ah[j]
     output_deltas = [0.0] * self.no
     for k in range(self.no):
-      error = targets[k] - self.ao[k]
+      error = targets[k] - self.ao[k] 
       output_deltas[k] =  error * dsigmoid(self.ao[k]) # this dsigmoid can probably go        
     return output_deltas
   
@@ -97,7 +97,6 @@ class NN:
     for i in range (self.ni):
       for j in range (self.nh):
         change = hidden_deltas[j] * self.ai[i]
-        #print 'activation',self.ai[i],'synapse',i,j,'change',change
         self.wi[i][j] += N*change + M*self.ci[i][j]
         self.ci[i][j] = change
  
@@ -133,10 +132,9 @@ def sigmoid (x):
   return math.tanh(x)
 
 # the derivative of the sigmoid function in terms of output
-# proof here: 
-# http://www.math10.com/en/algebra/hyperbolic-functions/hyperbolic-functions.html
 def dsigmoid (y):
-  return 1 - (y * y)
+  tanhy = math.tanh(y)
+  return 1 - (tanhy * tanhy)
 
 def makeMatrix ( I, J, fill=0.0):
   m = []
@@ -166,20 +164,24 @@ class NNTests(unittest.TestCase):
     # Assert
     self.assertEqual(output, target)
 
-  def test_simpleNetwork_correctWeightsAfterTraining(self):
+  def test_simpleNetwork_correctOutputDeltas(self):
     # Arrange
     instance = [1.0]
-    target = [1.0]
+    target = [0.0]
     pat = [instance, target]
     learningRate = 1.0
     inertia = 0.0
 
-    # Act
-    
-    self.nn.backPropagate(target, learningRate, inertia)
+    Oj = 1.0
+    dk = -1.0 * dsigmoid(1.0)
+    expected = [dk * Oj]
+
+    # Act    
+    deltas = self.nn.getOutputDeltas(target)
+    print deltas
 
     # Assert
-    self.nn.weights()
+    self.assertEqual(deltas, expected)
 
   def setUp(self):
     self.nn = NN(1,1,1)
