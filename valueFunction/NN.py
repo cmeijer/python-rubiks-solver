@@ -51,16 +51,16 @@ class NN:
       sum = 0.0
       for j in range(self.nh):        
         sum +=( self.ah[j] * self.wo[j][k] )
-      self.ao[k] = sigmoid(sum) # This sigmoid has to go.
+      self.ao[k] = sum # This sigmoid has to go.
       
     return self.ao
   
   def backPropagate (self, targets, N, M):
     # http://www.youtube.com/watch?v=aVId8KMsdUU&feature=BFa&list=LLldMCkmXl4j9_v0HeKdNcRA    
-    output_deltas = self.getOutputDeltas(targets)   
+    output_deltas = self.getOutputDeltas(targets)    
     self.updateOutputWeights(output_deltas, N, M)
     hidden_deltas = self.getHiddenDeltas(output_deltas)    
-    self.updateInputWeights(hidden_deltas, N, M)    
+    self.updateInputWeights(hidden_deltas, N, M)
 
   def getOutputDeltas(self, targets):
     # calc output deltas
@@ -72,15 +72,15 @@ class NN:
     # dE/dw[j][k] = (t[k] - ao[k]) * s'( SUM( w[j][k]*ah[j] ) ) * ah[j]
     output_deltas = [0.0] * self.no
     for k in range(self.no):
-      error = targets[k] - self.ao[k] 
-      output_deltas[k] =  error * dsigmoid(self.ao[k]) # this dsigmoid can probably go        
+      error = self.ao[k] - targets[k]
+      output_deltas[k] =  error # this dsigmoid can probably go        
     return output_deltas
   
   def updateOutputWeights(self, output_deltas, N, M):
     for j in range(self.nh):
       for k in range(self.no):
         # output_deltas[k] * self.ah[j] is the full derivative of dError/dweight[j][k]
-        change = output_deltas[k] * self.ah[j]
+        change = - output_deltas[k] * self.ah[j]
         self.wo[j][k] += N*change + M*self.co[j][k]
         self.co[j][k] = change
 
@@ -96,14 +96,14 @@ class NN:
   def updateInputWeights(self, hidden_deltas, N, M):
     for i in range (self.ni):
       for j in range (self.nh):
-        change = hidden_deltas[j] * self.ai[i]
+        change = - hidden_deltas[j] * self.ai[i]
         self.wi[i][j] += N*change + M*self.ci[i][j]
         self.ci[i][j] = change
  
   def weights(self):
     print 'Input weights:'
     for i in range(self.ni):
-      print self.wi[i]
+      pass#print self.wi[i]
     print
     print 'Output weights:'
     for j in range(self.nh):
@@ -155,7 +155,7 @@ class NNTests(unittest.TestCase):
     hiddenInputs = 1.0 + 1.0 # instance input + hidden threshold
     hiddenOutput = math.tanh(hiddenInputs)
     outputInput = hiddenOutput
-    outputOutput = math.tanh(hiddenOutput)
+    outputOutput = hiddenOutput
     target = [outputOutput]
 
     # Act
@@ -166,28 +166,70 @@ class NNTests(unittest.TestCase):
 
   def test_simpleNetwork_correctOutputDeltas(self):
     # Arrange
-    instance = [1.0]
     target = [0.0]
-    pat = [instance, target]
-    learningRate = 1.0
-    inertia = 0.0
 
     Oj = 1.0
-    dk = -1.0 * dsigmoid(1.0)
+    dk = 1.0 * (1.0)
     expected = [dk * Oj]
 
     # Act    
-    deltas = self.nn.getOutputDeltas(target)
-    print deltas
+    output_deltas = self.nn.getOutputDeltas(target)
 
     # Assert
-    self.assertEqual(deltas, expected)
+    self.assertEqual(output_deltas, expected)
+
+  def test_simpleNetwork_correctOutputWeightsUpdate(self):
+    # Arrange
+    learningRate = 0.5
+    inertia = 0.0
+
+    output_deltas = [1.0]
+    change = - learningRate * output_deltas[0]
+    currentWeight = 1.0
+    expected = [currentWeight + change]
+
+    # Act    
+    self.nn.updateOutputWeights(output_deltas, learningRate, inertia)
+
+    # Assert
+    self.assertEqual(self.nn.wo[0], expected)
+
+  def test_simpleNetwork_correctHiddenDeltas(self):
+    # Arrange
+    output_deltas = [1.0]
+    outputWeight = 1.0
+    
+    Oj = 1.0
+    dOj = dsigmoid(Oj)
+    expected = [dOj * output_deltas[0] * outputWeight]
+
+    # Act    
+    hidden_deltas = self.nn.getHiddenDeltas(output_deltas)
+
+    # Assert
+    self.assertEqual(hidden_deltas, expected)
+
 
   def setUp(self):
     self.nn = NN(1,1,1)
     self.nn.wi = makeMatrix (self.nn.ni, self.nn.nh, fill = 1.0)
     self.nn.wo = makeMatrix (self.nn.nh, self.nn.no, fill = 1.0)
 
+  def test_simpleNetwork_correctInputWeightsUpdate(self):
+    # Arrange
+    learningRate = 0.5
+    inertia = 0.0
+
+    hidden_deltas = [1.0]
+    change = - learningRate * hidden_deltas[0]
+    currentWeight = 1.0
+    expected = [currentWeight + change]
+
+    # Act    
+    self.nn.updateInputWeights(hidden_deltas, learningRate, inertia)
+
+    # Assert
+    self.assertEqual(self.nn.wi[0], expected)
 
 def main ():
   pat = [
