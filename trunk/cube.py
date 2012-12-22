@@ -177,12 +177,12 @@ class Cube(object):
             self.state[4] = turnSurfaceClockwise(turnSurfaceClockwise(oldState0))
             self.state[1] = turnSurfaceAntiClockwise(self.state[1])
             self.state[3] = turnSurfaceClockwise(self.state[3])
-            return
+            return self
         if direction == 'backward':     # over the left-right axis
             self.rotateState('forward')
             self.rotateState('forward')
             self.rotateState('forward')
-            return
+            return self
         if direction == 'left':         # over the top-bottom axis
             oldState1 = copy.deepcopy(self.state[1])
             self.state[0] = turnSurfaceClockwise(self.state[0])
@@ -191,34 +191,31 @@ class Cube(object):
             self.state[3] = self.state[4]
             self.state[4] = oldState1
             self.state[5] = turnSurfaceAntiClockwise(self.state[5])
-            return
+            return self
         if direction == 'right':        # over the top-bottom axis
             self.rotateState('left')
             self.rotateState('left')
             self.rotateState('left')
-            return
+            return self
         if direction == 'rollleft':     # over the front-back axis
             self.rotateState('backward')
             self.rotateState('left')
             self.rotateState('forward')
-            return
+            return self
         if direction == 'rollright':    # over the front-back axis
             self.rotateState('backward')
             self.rotateState('right')
             self.rotateState('forward')
-            return
+            return self
         raise Exception("Unrecognized direction '{0}'".format(direction))
 
     def getStandardizedBinaryState(self):
-        symmetries = list(map(lambda x : x.getBinaryState(), self.getSymmetries()))
+        symmetries = list(map(lambda x : x.getAugmentedBinaryState(), self.getSymmetries()))
 
         # Early escape for special case to win performance.
         if len(symmetries) == 1:
             return symmetries[0]
 
-        symmetryDictionary = {}
-        for symmetry in symmetries:
-            symmetryDictionary[`symmetry`] = symmetry
         symmetryRepresentations = list(symmetries)
         symmetryRepresentations.sort()
         return symmetryRepresentations[-1]
@@ -229,32 +226,37 @@ class Cube(object):
             color = self.state[i][1][1] # The color of the middle face of the ith side.
             for side in range(0,6):
                 sideList = [item for sublist in self.state[side] for item in sublist]
-                featureVector.extend(map(lambda x : x == color and 1.0 or 0.0, sideList))
-        return featureVector
+                selected = sideList[0:4] + sideList[5:] # remove the middle face, as it adds no info
+                featureVector.extend(map(lambda x : x == color and 1.0 or 0.0, selected))
+        return featureVector    
 
-    # A failed attempt to speed up the calculation of the binary state.
-    def getBinaryState2(self):
-        s = self.state
-        return flatten([flatten([map(lambda x:x==c and 1.0 or 0.0, flatten(s[j])) for j in range(0,6)]) for c in range(0,6)])
+    def getAugmentedBinaryState(self):
+        edges = self.getCorrectEdges()
+        corners = self.getCorrectCorners()
+        cubies = edges + corners
+        binaryState = self.getBinaryState()
+        return [cubies, edges, corners] + binaryState
 
-    # A failed attempt to speed up the calculation of the binary state.
-    def getBinaryState3(self):
-        featureVector = []
-        for i in range(0,6):
-            color = self.state[i][1][1] # The color of the middle face of the ith side.
-            for side in range(0,6):
-                for row in range(0,3):
-                    for cell in range(0,3):
-                        if self.state[side][row][cell] == color:
-                            value = 1.0
-                        else:
-                            value = 0.0
-                        featureVector.append(value)
-        return featureVector
-    
+    def getSymmetries(self):
+        symmetries = []
+        branches = [self, 
+                    self.getCopy().rotateState('rollright'),
+                    self.getCopy().rotateState('forward'),
+                    self.getCopy().rotateState('rollleft'),
+                    self.getCopy().rotateState('backward'),
+                    self.getCopy().rotateState('forward').rotateState('forward')
+                    ]
+        for branch in branches:
+            symmetries += [
+                            branch,
+                            branch.getCopy().rotateState('left'),
+                            branch.getCopy().rotateState('right'),
+                            branch.getCopy().rotateState('right').rotateState('right')
+                          ]
+        return symmetries
 
-    def getSymmetries(self): #TODO make it return a bunch of symmetries instead of just the identity
-        return [self]
+    def __eq__(self, other):
+        return self.state == other.state
 
 def flatten(enumeration):
     return [item for sublist in enumeration for item in sublist]
@@ -444,11 +446,53 @@ class CubeSanityTest(unittest.TestCase):
         # Assert
         self.assertEqual(correctCorners, 4)
 
+    def test_getSymmetries_returnsCorrectNumberOfSymmetries(self):
+        # Arrange
+        cube = Cube()
+        expected = 24
+
+        # Act
+        noSymmetries = len(cube.getSymmetries())
+
+        # Assert
+        self.assertEqual(noSymmetries, expected)
+
+    def test_getSymmetries_returnsNoDuplicates(self):
+        # Arrange
+        cube = Cube()
+        expectedDuplicates = 0
+
+        # Act
+        symmetries = cube.getSymmetries()
+        uniques = list(set(symmetries))
+        duplicates = len(symmetries) - len(uniques)
+
+        # Assert
+        self.assertEqual(duplicates, expectedDuplicates)
+
+    def test_getSymmetries_getSymmetriesOfSymmetries_returnsExactlyOneMatchWithOriginal(self):
+        # Arrange
+        original = Cube()
+        expected = [1 for i in range(24)] # List of the number of objects equal to the original per symmetry
+
+        # Act
+        symmetries = original.getSymmetries()
+        equalCounts = [] # List of the number of objects equal to the original per symmetry
+        for symmetry in symmetries:
+            count = 0
+            for doubleSymmetry in symmetry.getSymmetries():                
+                if doubleSymmetry == original:
+                    count += 1
+            equalCounts.append(count)
+
+        # Assert
+        self.assertEqual(equalCounts, expected)
+
 class BinaryStateTester(unittest.TestCase):
     def test_getBinaryState_solvedCube_correctState(self):
         # Arrange
         cube = Cube()
-        expectedState = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        expectedState = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
         # Act
         binaryState = cube.getBinaryState()
@@ -456,14 +500,26 @@ class BinaryStateTester(unittest.TestCase):
         # Assert
         self.assertEqual(binaryState, expectedState)
 
-    def test_getBinaryState_solvedCube_correctState(self):
+class BinaryStateTester(unittest.TestCase):
+    def test_getAugmentedBinaryState_solvedCube_correctState(self):
+        # Arrange
+        cube = Cube()
+        expectedState = [20.0, 12.0, 8.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+
+        # Act
+        augmentedBinaryState = cube.getAugmentedBinaryState()
+
+        # Assert
+        self.assertEqual(augmentedBinaryState, expectedState)
+
+    def test_getBinaryState_sequenceOfMoves_correctState(self):
         # Arrange
         cube = Cube()
         # Some sequence of actions
         actions = ['+top', '-front', '-left', '+bottom', '-left', '+front']
         for action in actions:
             cube.performAction(action)
-        expectedState = [0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0]
+        expectedState = [0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
 
         # Act
         binaryState = cube.getBinaryState()
@@ -475,19 +531,19 @@ class SpeedTester(object):
     def __init__(self):
         self.cube = Cube()
         self.surface = self.cube.state[0]
-        self.accuracy = 1.0
+        self.accuracy = 0.2
 
     def speedTest(self):        
-        """self.componentSpeedTest(lambda : turnSurfaceClockwise(self.surface), 'turnSurfaceClockwise')
+        self.componentSpeedTest(lambda : turnSurfaceClockwise(self.surface), 'turnSurfaceClockwise')
         self.componentSpeedTest(lambda : turnSurfaceAntiClockwise(self.surface), 'turnSurfaceAntiClockwise')
         for action in self.cube.actions:
             self.componentSpeedTest(lambda : self.cube.performAction(action), 'action_' + action)
         for direction in self.cube.directions:
-            self.componentSpeedTest(lambda : self.cube.rotateState(direction), 'rotateState_' + direction)"""
+            self.componentSpeedTest(lambda : self.cube.rotateState(direction), 'rotateState_' + direction)
         self.componentSpeedTest(lambda : self.cube.getStandardizedBinaryState(), 'getStandardizedBinaryState')
         self.componentSpeedTest(lambda : self.cube.getBinaryState(), 'getBinaryState')
-        self.componentSpeedTest(lambda : self.cube.getBinaryState2(), 'getBinaryState2')
-        self.componentSpeedTest(lambda : self.cube.getBinaryState3(), 'getBinaryState3')
+        self.componentSpeedTest(lambda : self.cube.getAugmentedBinaryState(), 'getAugmentedBinaryState')
+        self.componentSpeedTest(lambda : self.cube.getSymmetries(), 'getSymmetries')
 
 
 
