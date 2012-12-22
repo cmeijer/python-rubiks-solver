@@ -34,10 +34,10 @@ class Learner(object):
         
         if self.learn:
             value = reward + self.gamma * nextValue
-            if value > 1.0:
-                print 'Value = {0} = {1} + {2} * {3}'.format(value, reward, self.gamma, nextValue)
-                if value > 2.0:
-                    raise Exception('Value exceeded expected maximum.')
+            #if value > 1.0:
+            #    print 'Value = {0} = {1} + {2} * {3}'.format(value, reward, self.gamma, nextValue)
+                #if value > 2.0:
+                #    raise Exception('Value exceeded expected maximum.')
             
             self.setValue(self.world.getState(), value)
 

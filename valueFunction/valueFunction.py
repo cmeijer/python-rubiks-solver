@@ -19,7 +19,7 @@ class ValueFunction(object):
 class NNValueFunction(object):
     def __init__(self, inputNodes, path = None, nnRandomSeed = None):
         self.inputNodes = inputNodes
-        self.hiddenNodes = 8
+        self.hiddenNodes = 20
         self.outputNodes = 1
 
         self.defaultPath = 'data/valueFunctionEmergencyDump.pck'
@@ -30,7 +30,7 @@ class NNValueFunction(object):
         self.nnRandomSeed = nnRandomSeed
 
         self.loadNN()
-        self.N = 0.001  # Smaller means faster somehow
+        self.learningRate = 0.001  # Smaller means faster somehow
         self.M = 0.0   # Inertia
         self.data = []
         self.maxDataSize = 4 # Number of set() instances that are remembered and trained on.
@@ -51,7 +51,7 @@ class NNValueFunction(object):
         self.data.append([inputs, [value]])
         if len(self.data) > self.maxDataSize:
             self.data = self.data[-self.maxDataSize:]
-        self.nn.train(self.data, max_iterations = 4, N=self.N, M=self.M)
+        self.nn.train(self.data, max_iterations = 4, N=self.learningRate, M=self.M)
 
     def __del__(self):
         self.saveNN()

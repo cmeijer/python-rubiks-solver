@@ -29,7 +29,7 @@ class NN:
     self.wo = makeMatrix (self.nh, self.no) # weights from hidden to output
     # initialize node weights to random vals
     randomizeMatrix ( self.wi, -0.2, 0.2 )
-    randomizeMatrix ( self.wo, -2.0, 2.0 )
+    randomizeMatrix ( self.wo, -0.2, 0.2 )
     # create last change in weights matrices for momentum
     self.ci = makeMatrix (self.ni, self.nh)
     self.co = makeMatrix (self.nh, self.no)
@@ -76,13 +76,14 @@ class NN:
       output_deltas[k] =  error # this dsigmoid can probably go        
     return output_deltas
   
-  def updateOutputWeights(self, output_deltas, N, M):
+  def updateOutputWeights(self, output_deltas, learningRate, inertia):
     for j in range(self.nh):
       for k in range(self.no):
         # output_deltas[k] * self.ah[j] is the full derivative of dError/dweight[j][k]
         change = - output_deltas[k] * self.ah[j]
-        self.wo[j][k] += N*change + M*self.co[j][k]
-        self.co[j][k] = change
+        update = learningRate * change + inertia * self.co[j][k]
+        self.wo[j][k] += update
+        self.co[j][k] = update
 
   def getHiddenDeltas(self, output_deltas):
     hidden_deltas = [0.0] * self.nh
