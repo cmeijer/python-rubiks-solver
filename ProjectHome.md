@@ -1,0 +1,1 @@
+Rubiks cube solver that learns to solve the cube by updating a state-value table. This table is approximated by a neural net.
